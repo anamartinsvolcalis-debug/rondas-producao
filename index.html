@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Rondas de Produção</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#17191C; --panel:#212327; --panel-2:#2A2D32; --border:#3A3D43;
+  --text:#EDEBE5; --text-dim:#9A9DA3; --text-faint:#6B6E74;
+  --amber:#F5A623; --amber-dim:#8A6218;
+  --green:#4CAF7D; --green-bg:#1D3226;
+  --red:#E5484D; --red-bg:#3A2020;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+body{padding-bottom:76px;min-height:100vh;}
+h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+.header{padding:20px 18px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;}
+.header h1{font-size:20px;font-weight:600;}
+.header .sub{font-size:12px;color:var(--text-faint);margin-top:2px;font-family:'IBM Plex Mono',monospace;text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:6px;}
+.dot-live{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.dot-live.off{background:var(--red);}
+
+.setup-screen{padding:40px 20px;max-width:480px;margin:0 auto;line-height:1.6;}
+.setup-screen h2{font-size:17px;margin-bottom:12px;color:var(--amber);}
+.setup-screen p{font-size:14px;color:var(--text-dim);margin-bottom:10px;}
+.setup-screen code{background:var(--panel-2);padding:2px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+.rail-wrap{padding:18px 16px 22px;border-bottom:1px solid var(--border);}
+.rail-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;}
+.rail{position:relative;height:6px;background:var(--panel-2);border-radius:3px;margin:0 6px;}
+.rail-fill{position:absolute;top:0;left:0;height:100%;background:var(--amber);border-radius:3px;transition:width .35s ease;}
+.rail-stations{display:flex;justify-content:space-between;margin-top:8px;}
+.station{width:14px;height:14px;border-radius:50%;background:var(--panel-2);border:2px solid var(--border);transform:translateY(-13px);transition:all .2s ease;}
+.station.partial{background:var(--amber-dim);border-color:var(--amber);}
+.station.ok{background:var(--green);border-color:var(--green);}
+.station.anomaly{background:var(--red);border-color:var(--red);}
+
+.setup{display:flex;flex-direction:column;gap:10px;padding:16px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;}
+.field input,.field select{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:15px;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--amber);}
+.role-toggle{display:flex;gap:8px;}
+.role-toggle button{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);font-size:14px;font-weight:500;}
+.role-toggle button.active{background:var(--amber);border-color:var(--amber);color:#1A1300;}
+
+.btn-primary{background:var(--amber);color:#1A1300;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:600;width:100%;text-transform:uppercase;letter-spacing:0.04em;font-family:'Oswald',sans-serif;}
+.btn-primary:disabled{background:var(--panel-2);color:var(--text-faint);}
+.btn-secondary{background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;width:100%;}
+
+.zone-group{padding:14px 16px 4px;}
+.zone-heading{display:flex;align-items:center;justify-content:space-between;padding:0 2px 8px;}
+.zone-heading .zn{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--amber);}
+.zone-heading .zc{font-size:12px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;}
+
+.point-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.point-card.done-ok{border-color:var(--green);background:var(--green-bg);}
+.point-card.done-anomaly{border-color:var(--red);background:var(--red-bg);}
+.point-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.point-name{font-size:15px;font-weight:500;}
+.point-status{font-size:11px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+.point-actions{display:flex;gap:8px;flex-shrink:0;}
+.pbtn{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-dim);}
+.pbtn.ok-btn.selected{background:var(--green);border-color:var(--green);color:#0A1F13;}
+.pbtn.bad-btn.selected{background:var(--red);border-color:var(--red);color:#2B0A0B;}
+.point-note{margin-top:10px;}
+.point-note textarea{width:100%;background:var(--panel-2);border:1px solid var(--red);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical;min-height:50px;}
+.point-note .save-note{margin-top:6px;background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;}
+
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--border);display:flex;z-index:20;}
+.tab{flex:1;padding:12px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-faint);background:none;border:none;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;}
+.tab.active{color:var(--amber);}
+.tab .ic{font-size:18px;}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px;}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.stat-card .num{font-family:'Oswald',sans-serif;font-size:28px;font-weight:600;color:var(--amber);}
+.stat-card .lbl{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
+.section-title{font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;padding:6px 16px;margin-top:8px;}
+.point-status-row{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;margin:0 16px 6px;background:var(--panel);border:1px solid var(--border);border-radius:10px;}
+.point-status-row .pn{font-size:14px;font-weight:500;}
+.point-status-row .pz{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.03em;}
+.point-status-row .pt{font-size:12px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.dot.g{background:var(--green);} .dot.r{background:var(--red);} .dot.a{background:var(--amber);} .dot.gray{background:var(--text-faint);}
+.anomaly-item{padding:12px 14px;margin:0 16px 8px;background:var(--red-bg);border:1px solid var(--red);border-radius:10px;}
+.anomaly-item .top{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+.anomaly-item .note{font-size:14px;}
+.empty{padding:24px 16px;text-align:center;color:var(--text-faint);font-size:13px;}
+.filters{display:flex;gap:8px;padding:0 16px 10px;}
+.filters button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);font-size:12px;}
+.filters button.active{background:var(--panel-2);border-color:var(--amber);color:var(--amber);}
+
+.cfg-zone-block{padding:0 16px 14px;}
+.cfg-zone-title{display:flex;align-items:center;gap:8px;padding:8px 2px;}
+.cfg-zone-title input{flex:1;background:transparent;border:none;color:var(--amber);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
+.cfg-zone-title input:focus{outline:none;}
+.cfg-row{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;margin-left:12px;}
+.cfg-row input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;}
+.cfg-row input:focus{outline:none;}
+.del-btn{background:none;border:none;color:var(--text-faint);font-size:16px;padding:4px 6px;}
+.add-row{display:flex;gap:8px;padding:0 0 6px 12px;}
+.add-row input{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;}
+.add-row button{background:var(--panel-2);color:var(--amber);border:1px solid var(--border);border-radius:8px;padding:0 14px;font-weight:600;}
+.add-zone-row{display:flex;gap:8px;padding:0 16px 20px;}
+.add-zone-row input{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:14px;}
+.add-zone-row button{background:var(--amber);color:#1A1300;border:none;border-radius:8px;padding:0 16px;font-weight:600;}
+
+.hidden{display:none !important;}
+.loading{padding:40px 16px;text-align:center;color:var(--text-faint);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Rondas de produção</h1>
+  <div class="sub"><span class="dot-live off" id="liveDot"></span><span id="headerSub">a ligar...</span></div>
+</div>
+
+<div id="setupScreen" class="setup-screen hidden">
+  <h2>Configuração necessária</h2>
+  <p>Esta app ainda não está ligada a nenhuma base de dados. Abre o ficheiro <code>rondas-standalone.html</code> num editor de texto, encontra o bloco <code>FIREBASE_CONFIG</code> perto do fim do ficheiro, e substitui os valores pelos do teu projeto Firebase (ver guia de configuração fornecido).</p>
+  <p>Depois de guardares o ficheiro com os valores corretos, atualiza esta página.</p>
+</div>
+
+<div id="loadingScreen" class="loading">A ligar à base de dados...</div>
+
+<div id="app" class="hidden">
+
+  <div id="view-ronda">
+    <div id="setupBlock" class="setup">
+      <div class="field"><label>Nome</label><input type="text" id="inpName" placeholder="O teu nome"></div>
+      <div class="field">
+        <label>Função</label>
+        <div class="role-toggle">
+          <button type="button" data-role="Chefe" onclick="setRole('Chefe')">Chefe</button>
+          <button type="button" data-role="Subchefe" onclick="setRole('Subchefe')">Subchefe</button>
+        </div>
+      </div>
+      <div class="field"><label>Turno</label><select id="selTurno"></select></div>
+      <button class="btn-primary" id="btnStart" onclick="startRound()">Iniciar ronda</button>
+    </div>
+
+    <div id="roundBlock" class="hidden">
+      <div class="rail-wrap">
+        <div class="rail-label" id="railLabel"></div>
+        <div class="rail"><div class="rail-fill" id="railFill"></div></div>
+        <div class="rail-stations" id="railStations"></div>
+      </div>
+      <div id="zoneGroups"></div>
+      <div style="padding:0 16px 24px;">
+        <button class="btn-primary" id="btnFinish" onclick="finishRound()">Concluir ronda</button>
+        <div style="height:8px;"></div>
+        <button class="btn-secondary" onclick="cancelRound()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-painel" class="hidden">
+    <div class="filters">
+      <button id="fltHoje" class="active" onclick="setFilter('hoje')">Hoje</button>
+      <button id="flt7" onclick="setFilter('7dias')">Últimos 7 dias</button>
+      <button id="fltTodos" onclick="setFilter('todos')">Todos</button>
+    </div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="section-title">Estado dos pontos de verificação</div>
+    <div id="pointStatusList"></div>
+    <div class="section-title">Anomalias reportadas</div>
+    <div id="anomalyList"></div>
+    <div style="padding:8px 16px 24px;"><button class="btn-secondary" onclick="exportCSV()">Exportar CSV</button></div>
+  </div>
+
+  <div id="view-config" class="hidden">
+    <div class="section-title">Zonas e pontos de verificação</div>
+    <div id="zoneCfgWrap"></div>
+    <div class="add-zone-row">
+      <input type="text" id="inpNewZone" placeholder="Nova zona (ex: Paletização)">
+      <button onclick="addZone()">+ Zona</button>
+    </div>
+    <div class="section-title">Turnos e intervalo esperado</div>
+    <div id="turnoCfgList" style="padding:0 16px 16px;display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="padding:0 16px 24px;font-size:12px;color:var(--text-faint);line-height:1.5;">
+      Intervalo esperado = de quanto em quanto tempo um ponto deve ser verificado nesse turno, em minutos. Usado para assinalar pontos em atraso no painel.
+    </div>
+  </div>
+
+</div>
+
+<div class="tabbar hidden" id="tabbar">
+  <button class="tab active" id="tabBtn-ronda" onclick="switchTab('ronda')"><span class="ic">&#9679;</span>Ronda</button>
+  <button class="tab" id="tabBtn-painel" onclick="switchTab('painel')"><span class="ic">&#9632;</span>Painel</button>
+  <button class="tab" id="tabBtn-config" onclick="switchTab('config')"><span class="ic">&#9881;</span>Config</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* =========================================================
+   CONFIGURAÇÃO DO FIREBASE — substitui pelos valores do teu
+   projeto (ver guia de configuração). Isto NÃO é uma password
+   secreta, é normal aparecer no código de apps Firebase; a
+   segurança dos dados é feita pelas "regras" do Firestore.
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBgAy1GRKJjeTUvWz83B3uMpKbL-XbVY8E",
+  authDomain: "rondas-b2581.firebaseapp.com",
+  projectId: "rondas-b2581",
+  storageBucket: "rondas-b2581.firebasestorage.app",
+  messagingSenderId: "936219664221",
+  appId: "1:936219664221:web:43b42bf8893b72885d12b4"
+};
+/* ========================================================= */
+
+let db = null;
+let CONFIG = null;
+let ROUNDS = [];
+let currentRole = 'Chefe';
+let currentRound = null;
+let filterMode = 'hoje';
+
+const DEFAULT_CONFIG = {
+  zones: [
+    {id:'z1', name:'Hot End', points:[{id:'p101',name:'Melters'},{id:'p102',name:'Canal'},{id:'p103',name:'Fiberizadores'}]},
+    {id:'z2', name:'Forming', points:[{id:'p201',name:'Tambores'},{id:'p202',name:'Câmaras de sucção'}]},
+    {id:'z3', name:'Curing Oven', points:[{id:'p301',name:'Lubrificação'}]},
+    {id:'z4', name:'Line Speed', points:[
+      {id:'p401',name:'Cooling zone'},{id:'p402',name:'Serra de aparas'},{id:'p403',name:'Serra 600mm'},
+      {id:'p404',name:'Serra 400mm'},{id:'p405',name:'Raio X'},{id:'p406',name:'Rolo de aquecimento'},{id:'p407',name:'Guilhotina'}
+    ]},
+    {id:'z5', name:'Máquinas de embalamento', points:[
+      {id:'p501',name:'Board packing'},{id:'p502',name:'Roll up'},{id:'p503',name:'Compactadora'},{id:'p504',name:'Encapsuladora'}
+    ]}
+  ],
+  turnos: [
+    {id:'t1', name:'Manhã', startHour:6, endHour:14, intervalMin:120},
+    {id:'t2', name:'Tarde', startHour:14, endHour:22, intervalMin:120},
+    {id:'t3', name:'Noite', startHour:22, endHour:6, intervalMin:180}
+  ]
+};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function allPoints(){
+  const out = [];
+  CONFIG.zones.forEach(z => z.points.forEach(p => out.push({zoneId:z.id, zoneName:z.name, pointId:p.id, pointName:p.name})));
+  return out;
+}
+
+async function boot(){
+  if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'COLOCAR_AQUI'){
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+    return;
+  }
+  try{
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = getFirestore(app);
+  }catch(e){
+    document.getElementById('loadingScreen').textContent = 'Erro a ligar ao Firebase. Confirma os valores em FIREBASE_CONFIG.';
+    return;
+  }
+
+  const lastRaw = localStorage.getItem('ronda-lastuser');
+  if(lastRaw){
+    try{
+      const last = JSON.parse(lastRaw);
+      document.getElementById('inpName').value = last.name || '';
+      currentRole = last.role || 'Chefe';
+    }catch(e){}
+  }
+
+  // config: subscribe realtime
+  const cfgRef = doc(db, 'config', 'main');
+  onSnapshot(cfgRef, async (snap) => {
+    if(snap.exists()){
+      CONFIG = snap.data();
+    } else {
+      CONFIG = structuredClone(DEFAULT_CONFIG);
+      try{ await setDoc(cfgRef, CONFIG); }catch(e){}
+    }
+    if(document.getElementById('loadingScreen').classList.contains('hidden') === false){
+      document.getElementById('loadingScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('tabbar').classList.remove('hidden');
+    }
+    setLive(true);
+    setRole(currentRole);
+    renderTurnoSelect();
+    renderConfigView();
+    renderPainel();
+  }, (err) => {
+    setLive(false);
+    document.getElementById('headerSub').textContent = 'sem ligação — a tentar reconectar';
+  });
+
+  // rounds: subscribe realtime, most recent first
+  const roundsQ = query(collection(db, 'rounds'), orderBy('startTs', 'desc'));
+  onSnapshot(roundsQ, (snap) => {
+    ROUNDS = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    renderPainel();
+  }, (err) => { setLive(false); });
+
+  updateHeaderClock();
+  setInterval(updateHeaderClock, 30000);
+}
+
+function setLive(ok){
+  document.getElementById('liveDot').classList.toggle('off', !ok);
+}
+function updateHeaderClock(){
+  const now = new Date();
+  document.getElementById('headerSub').textContent = now.toLocaleDateString('pt-PT',{weekday:'long',day:'2-digit',month:'2-digit'}) + ' · ' + now.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function saveConfig(){ await setDoc(doc(db,'config','main'), CONFIG); }
+
+function activeTurnoId(){
+  const h = new Date().getHours();
+  for(const t of CONFIG.turnos){
+    if(t.startHour < t.endHour){ if(h >= t.startHour && h < t.endHour) return t.id; }
+    else{ if(h >= t.startHour || h < t.endHour) return t.id; }
+  }
+  return CONFIG.turnos[0] ? CONFIG.turnos[0].id : null;
+}
+function renderTurnoSelect(){
+  const sel = document.getElementById('selTurno');
+  sel.innerHTML = '';
+  CONFIG.turnos.forEach(t=>{
+    const opt = document.createElement('option'); opt.value=t.id; opt.textContent=t.name; sel.appendChild(opt);
+  });
+  const active = activeTurnoId();
+  if(active) sel.value = active;
+}
+window.setRole = function(role){
+  currentRole = role;
+  document.querySelectorAll('.role-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.role===role));
+};
+
+window.switchTab = function(tab){
+  ['ronda','painel','config'].forEach(t=>{
+    document.getElementById('view-'+t).classList.toggle('hidden', t!==tab);
+    document.getElementById('tabBtn-'+t).classList.toggle('active', t===tab);
+  });
+  if(tab==='painel') renderPainel();
+  if(tab==='config') renderConfigView();
+};
+
+window.startRound = function(){
+  const name = document.getElementById('inpName').value.trim();
+  if(!name){ alert('Indica o teu nome antes de iniciar a ronda.'); return; }
+  const turnoId = document.getElementById('selTurno').value;
+  try{ localStorage.setItem('ronda-lastuser', JSON.stringify({name, role:currentRole})); }catch(e){}
+  currentRound = { person:name, role:currentRole, turnoId, startTs: Date.now(), checks:{} };
+  document.getElementById('setupBlock').classList.add('hidden');
+  document.getElementById('roundBlock').classList.remove('hidden');
+  renderRail(); renderZoneGroups();
+};
+window.cancelRound = function(){
+  if(!confirm('Cancelar esta ronda? O progresso não é guardado.')) return;
+  currentRound = null;
+  document.getElementById('roundBlock').classList.add('hidden');
+  document.getElementById('setupBlock').classList.remove('hidden');
+};
+function turnoName(id){ const t = CONFIG.turnos.find(x=>x.id===id); return t?t.name:'—'; }
+
+function renderRail(){
+  const points = allPoints(); const total = points.length; const done = Object.keys(currentRound.checks).length;
+  document.getElementById('railLabel').textContent = done+' / '+total+' pontos verificados · turno '+turnoName(currentRound.turnoId);
+  document.getElementById('railFill').style.width = total ? Math.round((done/total)*100)+'%' : '0%';
+  const wrap = document.getElementById('railStations'); wrap.innerHTML='';
+  CONFIG.zones.forEach(z=>{
+    const s = document.createElement('div'); s.className='station';
+    const zChecks = z.points.map(p=>currentRound.checks[p.id]).filter(Boolean);
+    if(zChecks.some(c=>c.status==='anomaly')) s.classList.add('anomaly');
+    else if(zChecks.length===z.points.length && z.points.length>0) s.classList.add('ok');
+    else if(zChecks.length>0) s.classList.add('partial');
+    wrap.appendChild(s);
+  });
+}
+
+function renderZoneGroups(){
+  const wrap = document.getElementById('zoneGroups'); wrap.innerHTML='';
+  CONFIG.zones.forEach(z=>{
+    const doneCount = z.points.filter(p=>currentRound.checks[p.id]).length;
+    const group = document.createElement('div'); group.className='zone-group';
+    group.innerHTML = `<div class="zone-heading"><span class="zn">${esc(z.name)}</span><span class="zc">${doneCount}/${z.points.length}</span></div>`;
+    z.points.forEach(p=>{
+      const chk = currentRound.checks[p.id];
+      const card = document.createElement('div');
+      card.className='point-card'+(chk?(chk.status==='ok'?' done-ok':' done-anomaly'):'');
+      card.innerHTML = `
+        <div class="point-top">
+          <div>
+            <div class="point-name">${esc(p.name)}</div>
+            <div class="point-status">${chk?(chk.status==='ok'?'Verificado · '+fmtTime(chk.ts):'Anomalia · '+fmtTime(chk.ts)):'Por verificar'}</div>
+          </div>
+          <div class="point-actions">
+            <button type="button" class="pbtn ok-btn ${chk&&chk.status==='ok'?'selected':''}" onclick="markPoint('${p.id}','ok')">&#10003;</button>
+            <button type="button" class="pbtn bad-btn ${chk&&chk.status==='anomaly'?'selected':''}" onclick="markPoint('${p.id}','anomaly')">&#33;</button>
+          </div>
+        </div>
+        <div class="point-note hidden" id="note-${p.id}">
+          <textarea placeholder="Descreve a anomalia..." id="noteInput-${p.id}">${chk&&chk.note?esc(chk.note):''}</textarea>
+          <button class="save-note" onclick="saveNote('${p.id}')">Guardar nota</button>
+        </div>`;
+      group.appendChild(card);
+    });
+    wrap.appendChild(group);
+  });
+}
+
+window.markPoint = function(pointId, status){
+  if(status==='anomaly'){
+    currentRound.checks[pointId] = {status:'anomaly', ts:Date.now(), note:(currentRound.checks[pointId]&&currentRound.checks[pointId].note)||''};
+    renderZoneGroups();
+    document.getElementById('note-'+pointId).classList.remove('hidden');
+    document.getElementById('noteInput-'+pointId).focus();
+  } else {
+    currentRound.checks[pointId] = {status:'ok', ts:Date.now(), note:''};
+    renderZoneGroups();
+  }
+  renderRail();
+};
+window.saveNote = function(pointId){
+  const val = document.getElementById('noteInput-'+pointId).value.trim();
+  if(currentRound.checks[pointId]) currentRound.checks[pointId].note = val;
+  renderZoneGroups();
+};
+
+window.finishRound = async function(){
+  const total = allPoints().length; const done = Object.keys(currentRound.checks).length;
+  if(done < total){ if(!confirm(`Ainda faltam ${total-done} ponto(s) por verificar. Concluir mesmo assim?`)) return; }
+  currentRound.endTs = Date.now();
+  try{
+    await addDoc(collection(db,'rounds'), currentRound);
+  }catch(e){
+    alert('Não foi possível guardar a ronda. Verifica a ligação à internet e tenta novamente.');
+    return;
+  }
+  const finished = currentRound; currentRound = null;
+  document.getElementById('roundBlock').classList.add('hidden');
+  document.getElementById('setupBlock').classList.remove('hidden');
+  alert('Ronda concluída e guardada: '+finished.person+' · '+turnoName(finished.turnoId));
+};
+
+window.setFilter = function(mode){
+  filterMode = mode;
+  ['fltHoje','flt7','fltTodos'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById(mode==='hoje'?'fltHoje':mode==='7dias'?'flt7':'fltTodos').classList.add('active');
+  renderPainel();
+};
+function filteredRounds(){
+  const now = Date.now();
+  if(filterMode==='hoje'){ const s=new Date(); s.setHours(0,0,0,0); return ROUNDS.filter(r=>r.startTs>=s.getTime()); }
+  if(filterMode==='7dias'){ return ROUNDS.filter(r=>r.startTs>=now-7*24*60*60*1000); }
+  return ROUNDS;
+}
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDateTime(ts){ return new Date(ts).toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})+' '+fmtTime(ts); }
+function fmtSince(ts){
+  const diffMin = Math.round((Date.now()-ts)/60000);
+  if(diffMin<1) return 'agora mesmo';
+  if(diffMin<60) return 'há '+diffMin+' min';
+  const h=Math.floor(diffMin/60), m=diffMin%60;
+  return 'há '+h+'h'+(m?' '+m+'min':'');
+}
+
+function renderPainel(){
+  if(!CONFIG) return;
+  const rounds = filteredRounds();
+  let anomalies=0; const lastCheckByPoint={}; const allAnomalies=[];
+  rounds.forEach(r=>{ Object.entries(r.checks||{}).forEach(([pointId,chk])=>{
+    if(chk.status==='anomaly'){ anomalies++; allAnomalies.push({pointId, person:r.person, role:r.role, ts:chk.ts, note:chk.note}); }
+  });});
+
+  const pts = allPoints();
+  pts.forEach(p=>{ lastCheckByPoint[p.pointId]=null; });
+  ROUNDS.forEach(r=>{ Object.entries(r.checks||{}).forEach(([pointId,chk])=>{
+    if(!(pointId in lastCheckByPoint)) return;
+    if(!lastCheckByPoint[pointId] || chk.ts>lastCheckByPoint[pointId].ts) lastCheckByPoint[pointId]={ts:chk.ts, status:chk.status};
+  });});
+
+  const activeTurno = CONFIG.turnos.find(t=>t.id===activeTurnoId());
+  const expectedInterval = activeTurno?activeTurno.intervalMin:120;
+  let overdueCount=0;
+  pts.forEach(p=>{ const lc=lastCheckByPoint[p.pointId]; if(!lc||(Date.now()-lc.ts)/60000>expectedInterval) overdueCount++; });
+  const compliancePct = pts.length?Math.round(((pts.length-overdueCount)/pts.length)*100):0;
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card"><div class="num">${rounds.length}</div><div class="lbl">Rondas registadas</div></div>
+    <div class="stat-card"><div class="num">${compliancePct}%</div><div class="lbl">Pontos em dia</div></div>
+    <div class="stat-card"><div class="num" style="color:${anomalies?'var(--red)':'var(--green)'}">${anomalies}</div><div class="lbl">Anomalias</div></div>
+    <div class="stat-card"><div class="num">${overdueCount}</div><div class="lbl">Pontos em atraso</div></div>`;
+
+  const psWrap = document.getElementById('pointStatusList'); psWrap.innerHTML='';
+  pts.forEach(p=>{
+    const lc = lastCheckByPoint[p.pointId];
+    let dotClass='gray', statusText='Nunca verificado';
+    if(lc){
+      const overdue = (Date.now()-lc.ts)/60000>expectedInterval;
+      dotClass = lc.status==='anomaly'?'r':(overdue?'a':'g');
+      statusText = (lc.status==='anomaly'?'Última: anomalia · ':'Última: OK · ')+fmtSince(lc.ts)+(overdue?' · EM ATRASO':'');
+    }
+    const row = document.createElement('div'); row.className='point-status-row';
+    row.innerHTML = `<div><div class="pz">${esc(p.zoneName)}</div><div class="pn">${esc(p.pointName)}</div><div class="pt">${statusText}</div></div><div class="dot ${dotClass}"></div>`;
+    psWrap.appendChild(row);
+  });
+
+  const anWrap = document.getElementById('anomalyList'); anWrap.innerHTML='';
+  if(allAnomalies.length===0){ anWrap.innerHTML='<div class="empty">Sem anomalias no período selecionado.</div>'; }
+  else{
+    allAnomalies.sort((a,b)=>b.ts-a.ts);
+    allAnomalies.forEach(a=>{
+      const pInfo = pts.find(p=>p.pointId===a.pointId);
+      const label = pInfo?(pInfo.zoneName+' · '+pInfo.pointName):a.pointId;
+      const div = document.createElement('div'); div.className='anomaly-item';
+      div.innerHTML = `<div class="top"><span>${esc(label)}</span><span>${fmtDateTime(a.ts)}</span></div><div class="note">${esc(a.note||'(sem nota)')} — ${esc(a.person)} (${esc(a.role)})</div>`;
+      anWrap.appendChild(div);
+    });
+  }
+}
+
+window.exportCSV = function(){
+  const rows = [['data_hora','pessoa','funcao','turno','zona','ponto','estado','nota']];
+  ROUNDS.forEach(r=>{
+    Object.entries(r.checks||{}).forEach(([pointId,chk])=>{
+      let zoneName='', pointName=pointId;
+      for(const z of CONFIG.zones){ const p=z.points.find(pp=>pp.id===pointId); if(p){zoneName=z.name;pointName=p.name;break;} }
+      rows.push([new Date(chk.ts).toISOString(), r.person, r.role, turnoName(r.turnoId), zoneName, pointName, chk.status, (chk.note||'').replace(/\n/g,' ')]);
+    });
+  });
+  const csv = rows.map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='rondas_export.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+};
+
+function renderConfigView(){
+  if(!CONFIG) return;
+  const wrap = document.getElementById('zoneCfgWrap'); wrap.innerHTML='';
+  CONFIG.zones.forEach(z=>{
+    const block = document.createElement('div'); block.className='cfg-zone-block';
+    let pointsHtml='';
+    z.points.forEach(p=>{
+      pointsHtml += `<div class="cfg-row"><input type="text" value="${escAttr(p.name)}" onchange="renamePoint('${z.id}','${p.id}', this.value)"><button class="del-btn" onclick="deletePoint('${z.id}','${p.id}')">&#10005;</button></div>`;
+    });
+    block.innerHTML = `
+      <div class="cfg-zone-title"><input type="text" value="${escAttr(z.name)}" onchange="renameZone('${z.id}', this.value)"><button class="del-btn" onclick="deleteZone('${z.id}')">&#10005;</button></div>
+      ${pointsHtml}
+      <div class="add-row"><input type="text" id="newpt-${z.id}" placeholder="Novo ponto (ex: Rolamento)"><button onclick="addPoint('${z.id}')">+</button></div>`;
+    wrap.appendChild(block);
+  });
+  const tWrap = document.getElementById('turnoCfgList'); tWrap.innerHTML='';
+  CONFIG.turnos.forEach(t=>{
+    const row = document.createElement('div'); row.className='cfg-row'; row.style.marginLeft='0';
+    row.innerHTML = `<span style="min-width:70px;font-size:14px;">${esc(t.name)}</span><input type="number" min="15" step="15" value="${t.intervalMin}" style="max-width:70px;text-align:right;" onchange="setTurnoInterval('${t.id}', this.value)"><span style="font-size:12px;color:var(--text-faint);">min</span>`;
+    tWrap.appendChild(row);
+  });
+}
+
+window.addZone = async function(){
+  const inp = document.getElementById('inpNewZone'); const name = inp.value.trim(); if(!name) return;
+  CONFIG.zones.push({id:uid(), name, points:[]}); inp.value='';
+  await saveConfig();
+};
+window.deleteZone = async function(id){
+  if(!confirm('Remover esta zona e todos os seus pontos da lista de rondas?')) return;
+  CONFIG.zones = CONFIG.zones.filter(z=>z.id!==id);
+  await saveConfig();
+};
+window.renameZone = async function(id, name){
+  const z = CONFIG.zones.find(z=>z.id===id); if(z && name.trim()){ z.name=name.trim(); await saveConfig(); }
+};
+window.addPoint = async function(zoneId){
+  const inp = document.getElementById('newpt-'+zoneId); const name = inp.value.trim(); if(!name) return;
+  const z = CONFIG.zones.find(z=>z.id===zoneId); z.points.push({id:uid(), name});
+  await saveConfig();
+};
+window.deletePoint = async function(zoneId, pointId){
+  const z = CONFIG.zones.find(z=>z.id===zoneId); z.points = z.points.filter(p=>p.id!==pointId);
+  await saveConfig();
+};
+window.renamePoint = async function(zoneId, pointId, name){
+  const z = CONFIG.zones.find(z=>z.id===zoneId); const p = z.points.find(p=>p.id===pointId);
+  if(p && name.trim()){ p.name=name.trim(); await saveConfig(); }
+};
+window.setTurnoInterval = async function(id, val){
+  const t = CONFIG.turnos.find(t=>t.id===id); const n = parseInt(val,10);
+  if(t && n>0){ t.intervalMin=n; await saveConfig(); }
+};
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s){ return esc(s); }
+
+boot();
+</script>
+</body>
+</html>
